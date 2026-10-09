@@ -1,4 +1,4 @@
-const SERVER_ORIGIN = window.location.protocol === "file:" ? "http://localhost:3000" : window.location.origin;
+const SERVER_ORIGIN = window.location.origin;
 const API = `${SERVER_ORIGIN}/api`;
 const token = () => localStorage.getItem("orbit-token");
 const state = { user: JSON.parse(localStorage.getItem("orbit-user") || "null"), users: [], friends: [], groups: [], recentSearches: JSON.parse(localStorage.getItem("piya-recent-searches") || "[]"), customBots: JSON.parse(localStorage.getItem("piya-custom-bots") || "[]"), cryptoPrivateKey: null, cryptoReady: false, chatbotEditingId: null, messageMenuId: null, reactionMessageId: null, editingMessageId: null, searchResults: [], active: null, messages: [], authMode: "login", view: "chats", groupCreator: false, groupType: "", socket: null, profileTarget: null, profileDraftMedia: [], profileDraftPicture: "", onboarding: Number(localStorage.getItem("orbit-onboarding-step") || "0"), pendingAttachment: null, sharedFilter: null, unread: {}, settingsOpen: false, sidebarWidth: Number(localStorage.getItem("piya-sidebar-width") || "335"), sidebarCollapsed: localStorage.getItem("piya-sidebar-collapsed") === "true", sidebarHidden: localStorage.getItem("piya-sidebar-hidden") === "true" };
@@ -121,12 +121,12 @@ async function request(path, options = {}) {
   try {
     response = await fetch(API + path, { ...options, headers: { "Content-Type": "application/json", ...(token() ? { Authorization: `Bearer ${token()}` } : {}), ...(options.headers || {}) } });
   } catch {
-    throw new Error("Cannot connect to Piya. Start the server with `npm start`, then open http://localhost:3000.");
+    throw new Error("Cannot connect to Piya. Check your internet connection and try again.");
   }
   const raw = await response.text();
   let result;
   try { result = raw ? JSON.parse(raw) : {}; }
-  catch { throw new Error("Piya returned an invalid response. Make sure the app is open at http://localhost:3000."); }
+  catch { throw new Error("Piya returned an invalid response. Please try again in a moment."); }
   if (!response.ok) {
     const error = new Error(result.error || "Something went wrong.");
     error.status = response.status;
@@ -311,12 +311,27 @@ async function loadUsers() {
   else state.messages = await decryptMessages((await request(`/messages/${state.active.id}`)).messages);
   render();
 }
+// Live updates come from polling /api/events (serverless functions can't hold WebSockets open).
+// state.socket keeps a close() method so sign-out code can stop the poller.
 function connectSocket() {
-  const socketOrigin = SERVER_ORIGIN.replace(/^http/, "ws");
-  state.socket = new WebSocket(`${socketOrigin}/ws?token=${token()}`);
+  state.socket?.close();
   if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
-  state.socket.onmessage = async event => {
-    const incoming = JSON.parse(event.data);
+  const poller = { closed: false, cursor: null, timer: null, close() { this.closed = true; clearTimeout(this.timer); } };
+  state.socket = poller;
+  const poll = async () => {
+    if (poller.closed || !token()) return;
+    try {
+      const query = poller.cursor === null ? "" : `?after=${poller.cursor}`;
+      const result = await request(`/events${query}`);
+      poller.cursor = result.cursor;
+      for (const incoming of result.events) if (!poller.closed) await handleIncoming(incoming);
+    } catch (error) { if (error.status === 401) poller.close(); }
+    if (!poller.closed) poller.timer = setTimeout(poll, document.hidden ? 10000 : 2500);
+  };
+  poll();
+}
+async function handleIncoming(incoming) {
+  {
     if (incoming.type === "group-message" && state.active?.id === incoming.message.groupId) {
       state.messages.push(incoming.message);
       render();
@@ -354,7 +369,7 @@ function connectSocket() {
       state.messages = state.messages.map(message => incoming.messageIds.includes(message.id) ? { ...message, seenAt: incoming.seenAt } : message);
       render();
     }
-  };
+  }
 }
 function attachEvents() {
   document.querySelector("[data-add-chatbot]")?.addEventListener("click", () => {

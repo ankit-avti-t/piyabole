@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "description": "Real-time one-to-one chat application",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "reset-data": "node reset-data.js"
+    "start": "netlify dev"
   },
   "dependencies": {
     "@google/genai": "^1.16.0",
-    "ws": "^8.18.3"
+    "@netlify/database": "^2.0.1",
+    "@netlify/functions": "^6.0.2",
+    "drizzle-orm": "^1.0.0-beta.22"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^1.0.0-beta.22"
   }
 }
