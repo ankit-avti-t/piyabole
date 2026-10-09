@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 const { GoogleGenAI } = require("@google/genai");
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3100;
 const DATA_FILE = path.join(__dirname, "orbit-data.json");
 const sessions = new Map();
 const sockets = new Map();
