@@ -1,4 +1,4 @@
-const SERVER_ORIGIN = window.location.protocol === "file:" ? "http://localhost:3000" : window.location.origin;
+const SERVER_ORIGIN = window.location.protocol === "file:" ? "http://localhost:3100" : window.location.origin;
 const API = `${SERVER_ORIGIN}/api`;
 const token = () => localStorage.getItem("orbit-token");
 const state = { user: JSON.parse(localStorage.getItem("orbit-user") || "null"), users: [], friends: [], groups: [], recentSearches: JSON.parse(localStorage.getItem("piya-recent-searches") || "[]"), customBots: JSON.parse(localStorage.getItem("piya-custom-bots") || "[]"), cryptoPrivateKey: null, cryptoReady: false, chatbotEditingId: null, messageMenuId: null, reactionMessageId: null, editingMessageId: null, searchResults: [], active: null, messages: [], authMode: "login", view: "chats", groupCreator: false, groupType: "", socket: null, profileTarget: null, profileDraftMedia: [], profileDraftPicture: "", onboarding: Number(localStorage.getItem("orbit-onboarding-step") || "0"), pendingAttachment: null, sharedFilter: null, unread: {}, settingsOpen: false, sidebarWidth: Number(localStorage.getItem("piya-sidebar-width") || "335"), sidebarCollapsed: localStorage.getItem("piya-sidebar-collapsed") === "true", sidebarHidden: localStorage.getItem("piya-sidebar-hidden") === "true" };
@@ -121,12 +121,12 @@ async function request(path, options = {}) {
   try {
     response = await fetch(API + path, { ...options, headers: { "Content-Type": "application/json", ...(token() ? { Authorization: `Bearer ${token()}` } : {}), ...(options.headers || {}) } });
   } catch {
-    throw new Error("Cannot connect to Piya. Start the server with `npm start`, then open http://localhost:3000.");
+    throw new Error("Cannot connect to Piya. Start the server with `npm start`, then open http://localhost:3100.");
   }
   const raw = await response.text();
   let result;
   try { result = raw ? JSON.parse(raw) : {}; }
-  catch { throw new Error("Piya returned an invalid response. Make sure the app is open at http://localhost:3000."); }
+  catch { throw new Error("Piya returned an invalid response. Make sure the app is open at http://localhost:3100."); }
   if (!response.ok) {
     const error = new Error(result.error || "Something went wrong.");
     error.status = response.status;
